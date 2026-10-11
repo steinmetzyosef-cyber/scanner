@@ -1,0 +1,453 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Scanner">
+<meta name="theme-color" content="#0e1a24">
+<title>Crypto Scanner</title>
+<style>
+:root{--bg:#0e1a24;--pn:#16252f;--ln:#26394a;--tx:#e6edf3;--mu:#8da2b3;--up:#3fc1a5;--dn:#ef6f6c;--ac:#e8d9a8}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.4 -apple-system,system-ui,sans-serif}
+body{padding:calc(env(safe-area-inset-top) + 10px) 14px calc(env(safe-area-inset-bottom) + 24px);max-width:560px;margin:auto;font-variant-numeric:tabular-nums}
+header{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:10px}
+h1{font-size:20px;margin:0}small,.mu{color:var(--mu);font-size:13px}
+#eq{font-size:26px;font-weight:700;text-align:right}
+.row{display:flex;gap:8px;margin:10px 0}
+button{flex:1;padding:12px;border:1px solid var(--ln);background:var(--pn);color:var(--tx);border-radius:10px;font-size:15px;font-weight:600}
+button.p{background:var(--ac);color:#1b1a10;border-color:var(--ac)}button.r{color:var(--dn)}
+.card{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--pn);border:1px solid var(--ln);border-radius:10px;margin-bottom:6px}
+.card.sel{border-color:var(--ac)}.card b{font-size:16px}.up{color:var(--up)}.dn{color:var(--dn)}
+.tag{font-size:12px;padding:2px 8px;border-radius:99px;background:var(--up);color:#06231c;font-weight:700;margin-left:6px}.tag.t{background:var(--ac);color:#1b1a10}
+canvas{width:100%;height:220px;background:var(--pn);border:1px solid var(--ln);border-radius:10px;margin:6px 0}
+h3{font-size:15px;margin:16px 0 6px}
+#log div,#pos div,#btr div{padding:6px 0;border-bottom:1px solid var(--ln);font-size:13px}
+#toast{position:fixed;left:14px;right:14px;top:calc(env(safe-area-inset-top) + 8px);background:var(--ac);color:#1b1a10;padding:12px;border-radius:10px;font-weight:600;display:none;z-index:9}
+details{margin-top:14px;background:var(--pn);border:1px solid var(--ln);border-radius:10px;padding:10px 12px}
+label{display:block;margin:8px 0 2px;color:var(--mu);font-size:13px}
+input{width:100%;padding:10px;border-radius:8px;border:1px solid var(--ln);background:var(--bg);color:var(--tx);font-size:16px}
+</style></head><body>
+<div id="toast"></div>
+<header><div><h1>Crypto Scanner</h1><small id="st">Stopped. Paper money only.</small></div><div><div id="eq">$1000</div><small id="dy"></small></div></header>
+<div class="row"><button id="go" class="p">Start</button><button id="kill" class="r">Kill switch</button><button id="bt">Backtest</button></div>
+<div id="cards"></div>
+<canvas id="ch"></canvas>
+<h3>Open positions</h3><div id="pos"><span class="mu">None</span></div>
+<h3>Activity</h3><div id="log"></div>
+<h3>Backtest results</h3><div id="btr"><span class="mu">Tap Backtest to test the strategy on the last ~10 days.</span></div>
+<details><summary>Settings</summary>
+<label>Telegram bot token (optional, for alerts)</label><input id="tgT" autocomplete="off">
+<label>Telegram chat ID</label><input id="tgC" autocomplete="off">
+<label>Risk per trade (%)</label><input id="risk" inputmode="decimal">
+<label>Daily loss limit (%)</label><input id="dl" inputmode="decimal">
+<label>Max drawdown (%)</label><input id="md" inputmode="decimal">
+<div class="row"><button id="save">Save settings</button><button id="reset" class="r">Reset account</button></div></details>
+<details><summary>Server bot (optional, runs 24/7 on a computer)</summary>
+<p class="mu">Same strategy as this app, but it can place real trades and runs without your phone. Download it, then run <b>pip install ccxt pandas numpy matplotlib requests</b> and <b>python bot.py paper</b> on a server or computer.</p>
+<div class="row"><button id="cpy">Copy bot code</button><button id="dl">Download bot.py</button></div></details>
+<script type="text/plain" id="botsrc">
+#!/usr/bin/env python3
+"""
+Crypto trading bot: 24/7 scanner, trend signals, risk controls, backtester.
+Modes:  backtest | paper (default, fake money) | live (real money)
+Install: pip install ccxt pandas numpy matplotlib requests
+Usage:  python bot.py backtest --days 90
+        python bot.py paper
+        python bot.py live --i-understand
+Kill switch: create a file named STOP in this folder, or let the automatic
+daily-loss / drawdown limits trip. The bot closes positions and halts.
+NOT financial advice. No bot guarantees profit. Start in paper mode.
+"""
+import os, sys, time, json, argparse, logging
+from datetime import datetime, timezone
+import numpy as np
+import pandas as pd
+import ccxt
+
+# ------------------------- SETTINGS (edit these) -------------------------
+CFG = dict(
+    exchange="binance",            # any ccxt exchange id: kraken, coinbase, bybit...
+    quote="USDT",
+    symbols=["BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT", "XRP/USDT"],
+    timeframe="5m",
+    scan_seconds=10,               # market rescan interval
+    start_balance=1000.0,          # paper / backtest starting cash
+    risk_per_trade=0.01,           # risk 1% of equity per trade
+    stop_atr=2.0,                  # stop-loss  = entry - 2 x ATR
+    take_atr=3.0,                  # take-profit = entry + 3 x ATR
+    max_positions=3,
+    max_alloc_per_trade=0.33,      # never put more than 33% of equity in one coin
+    daily_loss_limit=0.03,         # halt if down 3% on the day
+    max_drawdown=0.10,             # halt if 10% below peak equity
+    fee=0.001,                     # 0.1% per side
+    slippage=0.0005,               # 0.05% assumed slippage
+)
+STATE_FILE, TRADE_LOG, STOP_FILE = "state.json", "trades.csv", "STOP"
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s",
+                    handlers=[logging.StreamHandler(), logging.FileHandler("bot.log")])
+log = logging.info
+
+# ------------------------- INDICATORS & SIGNALS -------------------------
+def add_signals(df):
+    c = df.close
+    df["ema_f"] = c.ewm(span=20, adjust=False).mean()
+    df["ema_s"] = c.ewm(span=50, adjust=False).mean()
+    d = c.diff()
+    up = d.clip(lower=0).ewm(alpha=1/14, adjust=False).mean()
+    dn = (-d.clip(upper=0)).ewm(alpha=1/14, adjust=False).mean()
+    df["rsi"] = 100 - 100 / (1 + up / dn.replace(0, np.nan))
+    macd = c.ewm(span=12, adjust=False).mean() - c.ewm(span=26, adjust=False).mean()
+    df["macd_h"] = macd - macd.ewm(span=9, adjust=False).mean()
+    tr = pd.concat([df.high - df.low, (df.high - c.shift()).abs(),
+                    (df.low - c.shift()).abs()], axis=1).max(axis=1)
+    df["atr"] = tr.ewm(alpha=1/14, adjust=False).mean()
+    up_, dn_ = df.high.diff(), -df.low.diff()
+    pdm = pd.Series(np.where((up_ > dn_) & (up_ > 0), up_, 0.0), index=df.index)
+    mdm = pd.Series(np.where((dn_ > up_) & (dn_ > 0), dn_, 0.0), index=df.index)
+    pdi = 100 * pdm.ewm(alpha=1/14, adjust=False).mean() / df.atr
+    mdi = 100 * mdm.ewm(alpha=1/14, adjust=False).mean() / df.atr
+    dx = 100 * (pdi - mdi).abs() / (pdi + mdi).replace(0, np.nan)
+    df["adx"] = dx.ewm(alpha=1/14, adjust=False).mean()   # trend strength (filters chop)
+    df["ema200"] = c.ewm(span=200, adjust=False).mean()    # long-term trend filter
+    df["vol_ratio"] = df.volume / df.volume.rolling(20).mean()
+    df["trend"] = np.where(df.ema_f > df.ema_s, "UP", "DOWN")
+    ok = ((df.ema_f > df.ema_s) & (c > df.ema_s) & (df.macd_h > 0) &
+          (df.macd_h > df.macd_h.shift()) & df.rsi.between(50, 70) & (df.vol_ratio > 1) &
+          (df.adx > 20) & (c > df.ema200))
+    df["buy"] = ok & ~ok.shift(fill_value=False)       # fresh entry signal only
+    df["sell"] = (df.ema_f < df.ema_s) | (df.rsi > 80)  # trend flip / overheated
+    return df
+
+def to_df(raw):
+    df = pd.DataFrame(raw, columns=["ts", "open", "high", "low", "close", "volume"])
+    df = df.drop_duplicates("ts").reset_index(drop=True)
+    df["time"] = pd.to_datetime(df.ts, unit="ms")
+    return add_signals(df)
+
+def make_exchange(keys=False):
+    p = {"enableRateLimit": True}
+    if keys:
+        p.update(apiKey=os.environ["API_KEY"], secret=os.environ["API_SECRET"])
+    return getattr(ccxt, CFG["exchange"])(p)
+
+def notify(msg):
+    log(msg)
+    t, c = os.getenv("TELEGRAM_TOKEN"), os.getenv("TELEGRAM_CHAT_ID")
+    if t and c:
+        try:
+            import requests
+            requests.post(f"https://api.telegram.org/bot{t}/sendMessage",
+                          data={"chat_id": c, "text": msg}, timeout=5)
+        except Exception as e:
+            log(f"telegram failed: {e}")
+
+# ------------------------- BACKTEST -------------------------
+def fetch_history(ex, sym, tf, days):
+    step = ex.parse_timeframe(tf) * 1000
+    since, out = ex.milliseconds() - days * 86400000, []
+    while since < ex.milliseconds():
+        b = ex.fetch_ohlcv(sym, tf, since=since, limit=1000)
+        if not b: break
+        out += b
+        since = b[-1][0] + step
+        if len(b) < 2: break
+    return to_df(out)
+
+def backtest_symbol(df):
+    cash, pos, pending, trades, eq = CFG["start_balance"], None, False, [], []
+    f, s = CFG["fee"], CFG["slippage"]
+    cool = 0
+    for i in range(200, len(df)):
+        r = df.iloc[i]
+        if pos is None and pending and not np.isnan(r.atr):
+            entry = r.open * (1 + s)
+            stop, tp = entry - CFG["stop_atr"] * pos_atr, entry + CFG["take_atr"] * pos_atr
+            risk_cash = cash * CFG["risk_per_trade"]
+            qty = min(risk_cash / (entry - stop), cash * CFG["max_alloc_per_trade"] / entry)
+            if qty > 0:
+                cash -= qty * entry * (1 + f)
+                pos = dict(qty=qty, entry=entry, stop=stop, tp=tp, t=r.time, a=pos_atr)
+        pending = False
+        if pos:
+            exit_p = None
+            if r.low <= pos["stop"]: exit_p, why = pos["stop"], "stop"
+            elif r.high >= pos["tp"]: exit_p, why = pos["tp"], "target"
+            elif r.sell: exit_p, why = r.close, "trend flip"
+            if exit_p:
+                exit_p *= (1 - s)
+                cash += pos["qty"] * exit_p * (1 - f)
+                trades.append(dict(open=pos["t"], close=r.time, entry=pos["entry"], exit=exit_p,
+                                   pnl_pct=(exit_p / pos["entry"] - 1) * 100, why=why))
+                if exit_p < pos["entry"]: cool = i + 6   # 30-min cooldown after a loss
+                pos = None
+            elif r.high - pos["entry"] >= pos["a"]:   # breakeven + trailing stop
+                pos["stop"] = max(pos["stop"], r.high - 1.5 * pos["a"], pos["entry"] * (1 + 2 * f))
+        elif r.buy and i >= cool:
+            pending, pos_atr = True, r.atr
+        eq.append(cash + (pos["qty"] * r.close if pos else 0))
+    return pd.DataFrame(trades), pd.Series(eq, index=df.time[200:])
+
+def run_backtest(days):
+    import matplotlib; matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    ex = make_exchange()
+    for sym in CFG["symbols"]:
+        df = fetch_history(ex, sym, CFG["timeframe"], days)
+        tr, eq = backtest_symbol(df)
+        ret = (eq.iloc[-1] / CFG["start_balance"] - 1) * 100
+        hold = (df.close.iloc[-1] / df.close.iloc[200] - 1) * 100
+        dd = ((eq / eq.cummax()) - 1).min() * 100
+        wins = (tr.pnl_pct > 0).mean() * 100 if len(tr) else 0
+        gp = tr.pnl_pct[tr.pnl_pct > 0].sum() if len(tr) else 0
+        gl = -tr.pnl_pct[tr.pnl_pct < 0].sum() if len(tr) else 0
+        notify(f"{sym} {days}d | return {ret:+.1f}% vs buy&hold {hold:+.1f}% | trades {len(tr)} | "
+               f"win {wins:.0f}% | profit factor {gp / gl if gl else float('inf'):.2f} | max DD {dd:.1f}%")
+        fig, ax = plt.subplots(2, 1, figsize=(14, 8), sharex=True, gridspec_kw={"height_ratios": [3, 1]})
+        ax[0].plot(df.time, df.close, lw=.8, label="price")
+        ax[0].plot(df.time, df.ema_f, lw=.6, label="EMA20"); ax[0].plot(df.time, df.ema_s, lw=.6, label="EMA50")
+        if len(tr):
+            ax[0].scatter(tr.open, tr.entry, marker="^", c="g", s=40, label="buy")
+            ax[0].scatter(tr.close, tr.exit, marker="v", c="r", s=40, label="sell")
+        ax[0].legend(); ax[0].set_title(f"{sym} {CFG['timeframe']}  return {ret:+.1f}%")
+        ax[1].plot(eq.index, eq.values); ax[1].set_title("Equity")
+        fig.tight_layout(); fig.savefig(f"backtest_{sym.replace('/', '_')}.png", dpi=110); plt.close(fig)
+        tr.to_csv(f"backtest_{sym.replace('/', '_')}_trades.csv", index=False)
+
+# ------------------------- LIVE / PAPER ENGINE -------------------------
+def load_state():
+    if os.path.exists(STATE_FILE):
+        return json.load(open(STATE_FILE))
+    return dict(cash=CFG["start_balance"], pos={}, peak=CFG["start_balance"],
+                day=str(datetime.now(timezone.utc).date()), day_start=CFG["start_balance"], halted=False)
+
+def save_state(st): json.dump(st, open(STATE_FILE, "w"), indent=1)
+
+def log_trade(row):
+    pd.DataFrame([row]).to_csv(TRADE_LOG, mode="a", header=not os.path.exists(TRADE_LOG), index=False)
+
+def run_bot(live):
+    ex = make_exchange(keys=live)
+    ex.load_markets()
+    st = load_state()
+    notify(f"Bot started in {'LIVE' if live else 'PAPER'} mode on {CFG['exchange']}")
+    f = CFG["fee"]
+
+    def equity(prices):
+        return st["cash"] + sum(p["qty"] * prices.get(s, p["entry"]) for s, p in st["pos"].items())
+
+    def close_pos(sym, price, why):
+        p = st["pos"].pop(sym)
+        if live:
+            ex.create_market_sell_order(sym, ex.amount_to_precision(sym, p["qty"]))
+        st["cash"] += p["qty"] * price * (1 - f)
+        pnl = (price / p["entry"] - 1) * 100
+        if pnl < 0: st.setdefault("cool", {})[sym] = time.time() + 1800
+        log_trade(dict(time=datetime.now(timezone.utc).isoformat(), symbol=sym, side="SELL",
+                       price=price, qty=p["qty"], pnl_pct=round(pnl, 2), reason=why))
+        notify(f"SELL {sym} @ {price:.4f} ({pnl:+.2f}%) - {why}")
+
+    while True:
+        try:
+            if live:
+                st["cash"] = ex.fetch_balance()["free"].get(CFG["quote"], 0)
+            today = str(datetime.now(timezone.utc).date())
+            data, prices = {}, {}
+            for sym in CFG["symbols"]:
+                data[sym] = to_df(ex.fetch_ohlcv(sym, CFG["timeframe"], limit=300))
+                prices[sym] = float(data[sym].close.iloc[-1])
+            eq = equity(prices)
+            if today != st["day"]:
+                st["day"], st["day_start"] = today, eq
+            st["peak"] = max(st["peak"], eq)
+
+            # ---- automatic kill switch ----
+            reason = None
+            if os.path.exists(STOP_FILE): reason = "STOP file found"
+            elif eq < st["day_start"] * (1 - CFG["daily_loss_limit"]): reason = "daily loss limit hit"
+            elif eq < st["peak"] * (1 - CFG["max_drawdown"]): reason = "max drawdown hit"
+            if reason and not st["halted"]:
+                for s in list(st["pos"]): close_pos(s, prices[s], f"KILL SWITCH: {reason}")
+                st["halted"] = True
+                notify(f"BOT HALTED: {reason}. Equity {eq:.2f}. Delete state.json/STOP to reset.")
+            if st["halted"]:
+                save_state(st); log("halted; exiting"); return
+
+            # ---- manage open positions (check live price vs stop/target) ----
+            for s in list(st["pos"]):
+                p, px, last = st["pos"][s], prices[s], data[s].iloc[-2]
+                if px <= p["stop"]: close_pos(s, px, "stop-loss")
+                elif px >= p["tp"]: close_pos(s, px, "take-profit")
+                elif last.sell: close_pos(s, px, "trend flip / RSI>80")
+                elif px - p["entry"] >= p.get("a", 0) > 0:
+                    p["stop"] = max(p["stop"], px - 1.5 * p["a"], p["entry"] * (1 + 2 * f))
+
+            # ---- look for entries on the last CLOSED candle ----
+            for sym in CFG["symbols"]:
+                last = data[sym].iloc[-2]
+                if (sym in st["pos"] or len(st["pos"]) >= CFG["max_positions"] or not last.buy
+                        or st.setdefault("last", {}).get(sym) == int(last.ts)
+                        or st.get("cool", {}).get(sym, 0) > time.time()):
+                    continue
+                px = prices[sym] * (1 + CFG["slippage"])
+                stop, tp = px - CFG["stop_atr"] * last.atr, px + CFG["take_atr"] * last.atr
+                qty = min(eq * CFG["risk_per_trade"] / (px - stop),
+                          eq * CFG["max_alloc_per_trade"] / px, st["cash"] / (px * (1 + f)))
+                if qty * px < 10: continue
+                if live:
+                    qty = float(ex.amount_to_precision(sym, qty))
+                    ex.create_market_buy_order(sym, qty)
+                st["cash"] -= qty * px * (1 + f)
+                st["pos"][sym] = dict(qty=qty, entry=px, stop=stop, tp=tp, a=float(last.atr))
+                st["last"][sym] = int(last.ts)  # don't re-enter on the same candle
+                log_trade(dict(time=datetime.now(timezone.utc).isoformat(), symbol=sym, side="BUY",
+                               price=px, qty=qty, pnl_pct="", reason="signal"))
+                notify(f"BUY {sym} @ {px:.4f} | stop {stop:.4f} | target {tp:.4f}")
+
+            save_state(st)
+            table = " | ".join(f"{s.split('/')[0]} {prices[s]:.2f} {data[s].trend.iloc[-1]} "
+                               f"RSI{data[s].rsi.iloc[-1]:.0f}" for s in CFG["symbols"])
+            log(f"EQ {eq:.2f} (day {eq / st['day_start'] * 100 - 100:+.2f}%) pos {list(st['pos'])} || {table}")
+        except (ccxt.NetworkError, ccxt.ExchangeNotAvailable) as e:
+            log(f"network issue, retrying: {e}")
+        except Exception as e:
+            notify(f"ERROR: {e}")
+        time.sleep(CFG["scan_seconds"])
+
+# ------------------------- ENTRY POINT -------------------------
+if __name__ == "__main__":
+    ap = argparse.ArgumentParser()
+    ap.add_argument("mode", choices=["backtest", "paper", "live"])
+    ap.add_argument("--days", type=int, default=90)
+    ap.add_argument("--i-understand", action="store_true", help="required for live trading")
+    a = ap.parse_args()
+    if a.mode == "backtest": run_backtest(a.days)
+    elif a.mode == "paper": run_bot(live=False)
+    else:
+        if not a.i_understand: sys.exit("Live mode risks real money. Add --i-understand to proceed.")
+        run_bot(live=True)
+</script>
+<script>
+const SYMS=["BTCUSDT","ETHUSDT","SOLUSDT","BNBUSDT","XRPUSDT"],TF="5m",API="https://data-api.binance.vision/api/v3/klines";
+const $=id=>document.getElementById(id),today=()=>new Date().toISOString().slice(0,10);
+const ld=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))||d}catch(e){return d}},sv=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
+let cfg=Object.assign({start:1000,risk:.01,stopAtr:2,tpAtr:3,maxPos:3,alloc:.33,dayLoss:.03,maxDD:.1,fee:.001,slip:.0005,tgT:"",tgC:""},ld("c",{}));
+const fresh=()=>({cash:cfg.start,pos:{},peak:cfg.start,day:today(),dayStart:cfg.start,halted:false,last:{},log:[]});
+let S=ld("s",null)||fresh(),DATA={},PX={},sel="BTCUSDT",timer=null,busy=false,wl=null,ac=null,killReq=false;
+
+// ---------- indicators (same rules as the Python bot) ----------
+const ema=(a,n)=>{const k=2/(n+1);let e=a[0];return a.map((v,i)=>i?(e=v*k+e*(1-k)):e)};
+function ind(K){
+ const c=K.map(x=>x.c),f=ema(c,20),s=ema(c,50),e12=ema(c,12),e26=ema(c,26),m=e12.map((v,i)=>v-e26[i]),sg=ema(m,9);
+ const e200=ema(c,200);let au=0,ad=0,at=0,pok=false,sp=0,sm=0,ax=0;
+ K.forEach((x,i)=>{
+  const d=i?c[i-1]:c[0];const df=x.c-d;au+=(Math.max(df,0)-au)/14;ad+=(Math.max(-df,0)-ad)/14;
+  x.rsi=ad?100-100/(1+au/ad):100;
+  const tr=i?Math.max(x.h-x.l,Math.abs(x.h-c[i-1]),Math.abs(x.l-c[i-1])):x.h-x.l;at+=(tr-at)/14;x.atr=at;
+  const pr=i?K[i-1]:x,u=x.h-pr.h,dm=pr.l-x.l;sp+=((u>dm&&u>0?u:0)-sp)/14;sm+=((dm>u&&dm>0?dm:0)-sm)/14;
+  const pi=at?100*sp/at:0,mi=at?100*sm/at:0,dx=pi+mi?100*Math.abs(pi-mi)/(pi+mi):0;ax+=(dx-ax)/14;x.adx=ax;x.e2=e200[i];
+  let vs=0,n=0;for(let j=Math.max(0,i-19);j<=i;j++){vs+=K[j].v;n++}x.vr=x.v/(vs/n);
+  x.f=f[i];x.s=s[i];x.mh=m[i]-sg[i];x.pmh=i?m[i-1]-sg[i-1]:0;
+  const ok=x.f>x.s&&x.c>x.s&&x.mh>0&&x.mh>x.pmh&&x.rsi>=50&&x.rsi<=70&&x.vr>1&&x.adx>20&&x.c>x.e2;
+  x.buy=ok&&!pok;pok=ok;x.sell=x.f<x.s||x.rsi>80;
+ });return K}
+async function kl(sym,limit,end){
+ const r=await fetch(`${API}?symbol=${sym}&interval=${TF}&limit=${limit}`+(end?`&endTime=${end}`:""));
+ if(!r.ok)throw new Error("data "+r.status);
+ return (await r.json()).map(r=>({t:+r[0],o:+r[1],h:+r[2],l:+r[3],c:+r[4],v:+r[5]}))}
+
+// ---------- alerts ----------
+function beep(){try{const o=ac.createOscillator(),g=ac.createGain();o.connect(g);g.connect(ac.destination);o.frequency.value=880;g.gain.value=.2;o.start();o.stop(ac.currentTime+.25)}catch(e){}}
+function notify(m){
+ S.log.unshift(new Date().toLocaleTimeString()+"  "+m);S.log=S.log.slice(0,40);
+ const t=$("toast");t.textContent=m;t.style.display="block";setTimeout(()=>t.style.display="none",5000);
+ beep();if(navigator.vibrate)navigator.vibrate(200);
+ if(cfg.tgT&&cfg.tgC)fetch(`https://api.telegram.org/bot${cfg.tgT}/sendMessage`,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:new URLSearchParams({chat_id:cfg.tgC,text:m})}).catch(()=>{})}
+
+// ---------- trading engine (paper) ----------
+function close(s,p,why){
+ const q=S.pos[s];S.cash+=q.q*p*(1-cfg.fee);delete S.pos[s];S.cool=S.cool||{};if(p<q.entry)S.cool[s]=Date.now()+18e5;
+ notify(`SELL ${s} @ ${p.toFixed(4)} (${((p/q.entry-1)*100).toFixed(2)}%) - ${why}`)}
+async function tick(){
+ if(busy)return;busy=true;
+ try{
+  await Promise.all(SYMS.map(async s=>{const k=ind(await kl(s,300));DATA[s]=k;PX[s]=k[k.length-1].c}));
+  let eq=S.cash;for(const s in S.pos)eq+=S.pos[s].q*PX[s];
+  if(today()!==S.day){S.day=today();S.dayStart=eq}
+  S.peak=Math.max(S.peak,eq);
+  const why=killReq?"manual kill switch":eq<S.dayStart*(1-cfg.dayLoss)?"daily loss limit":eq<S.peak*(1-cfg.maxDD)?"max drawdown":"";
+  if(why){for(const s of Object.keys(S.pos))close(s,PX[s],"KILL: "+why);S.halted=true;notify("BOT HALTED: "+why);stop(true)}
+  else{
+   for(const s of Object.keys(S.pos)){const p=S.pos[s],d=DATA[s],px=PX[s];
+    if(px<=p.stop)close(s,px,p.stop>p.entry?"trailing stop":"stop-loss");else if(px>=p.tp)close(s,px,"take-profit");else if(d[d.length-2].sell)close(s,px,"trend flip");
+    else if(p.a&&px-p.entry>=p.a)p.stop=Math.max(p.stop,px-1.5*p.a,p.entry*(1+2*cfg.fee))}
+   for(const s of SYMS){const d=DATA[s],r=d[d.length-2];
+    if(S.pos[s]||Object.keys(S.pos).length>=cfg.maxPos||!r.buy||S.last[s]===r.t||(S.cool&&S.cool[s]>Date.now()))continue;
+    const px=PX[s]*(1+cfg.slip),stop=px-cfg.stopAtr*r.atr,tp=px+cfg.tpAtr*r.atr;
+    const q=Math.min(eq*cfg.risk/(px-stop),eq*cfg.alloc/px,S.cash/(px*(1+cfg.fee)));
+    if(q*px<10)continue;S.cash-=q*px*(1+cfg.fee);S.pos[s]={q,entry:px,stop,tp,a:r.atr};S.last[s]=r.t;
+    notify(`BUY ${s} @ ${px.toFixed(4)} | stop ${stop.toFixed(4)} | target ${tp.toFixed(4)}`)}}
+  sv("s",S);$("st").textContent=S.halted?"Halted. Reset account to restart.":"Scanning every 10s · "+new Date().toLocaleTimeString();
+  render(eq)
+ }catch(e){$("st").textContent="Network issue, retrying: "+e.message}
+ busy=false}
+
+// ---------- UI ----------
+function render(eq){
+ if(eq===undefined){eq=S.cash;for(const s in S.pos)eq+=S.pos[s].q*(PX[s]||S.pos[s].entry)}
+ $("eq").textContent="$"+eq.toFixed(2);const dp=(eq/S.dayStart-1)*100;
+ $("dy").textContent=`today ${dp>=0?"+":""}${dp.toFixed(2)}%`;$("dy").className=dp>=0?"up":"dn";
+ $("cards").innerHTML=SYMS.map(s=>{const d=DATA[s];if(!d)return`<div class="card"><b>${s}</b><span class="mu">loading</span></div>`;
+  const r=d[d.length-1],up=r.f>r.s;
+  return`<div class="card ${s===sel?"sel":""}" onclick="sel='${s}';render();draw()"><div><b>${s.replace("USDT","")}</b>${S.pos[s]?'<span class="tag t">in trade</span>':d[d.length-2].buy?'<span class="tag">buy signal</span>':""}<br><small>RSI ${r.rsi.toFixed(0)} · ADX ${r.adx.toFixed(0)} · trend <span class="${up?"up":"dn"}">${up?"up":"down"}</span></small></div><b>${r.c.toFixed(r.c<10?4:2)}</b></div>`}).join("");
+ const ps=Object.keys(S.pos);$("pos").innerHTML=ps.length?ps.map(s=>{const p=S.pos[s],pc=((PX[s]||p.entry)/p.entry-1)*100;
+  return`<div><b>${s}</b> <span class="${pc>=0?"up":"dn"}">${pc.toFixed(2)}%</span><br><small>in ${p.entry.toFixed(4)} · stop ${p.stop.toFixed(4)} · target ${p.tp.toFixed(4)}</small></div>`}).join(""):'<span class="mu">None</span>';
+ $("log").innerHTML=S.log.map(l=>`<div>${l}</div>`).join("")||'<span class="mu">Nothing yet. Tap Start.</span>';draw()}
+function draw(){
+ const d=DATA[sel],cv=$("ch");if(!d)return;const w=cv.clientWidth,h=cv.clientHeight,dp=devicePixelRatio||1;cv.width=w*dp;cv.height=h*dp;
+ const g=cv.getContext("2d");g.scale(dp,dp);const v=d.slice(-120),lo=Math.min(...v.map(x=>Math.min(x.l,x.s))),hi=Math.max(...v.map(x=>Math.max(x.h,x.s)));
+ const X=i=>8+i*(w-16)/(v.length-1),Y=p=>h-14-(p-lo)/(hi-lo)*(h-28);
+ const line=(k,col)=>{g.beginPath();v.forEach((x,i)=>i?g.lineTo(X(i),Y(x[k])):g.moveTo(X(i),Y(x[k])));g.strokeStyle=col;g.lineWidth=1.5;g.stroke()};
+ line("s","#8da2b3");line("f","#e8d9a8");line("c","#e6edf3");
+ v.forEach((x,i)=>{if(x.buy){g.fillStyle="#3fc1a5";g.beginPath();g.moveTo(X(i),Y(x.l)+4);g.lineTo(X(i)-5,Y(x.l)+12);g.lineTo(X(i)+5,Y(x.l)+12);g.fill()}});
+ g.fillStyle="#8da2b3";g.font="11px sans-serif";g.fillText(sel+" 5m · price, EMA20 (gold), EMA50 (grey), ▲ buy signals",8,12)}
+
+// ---------- backtest ----------
+async function hist(s){let all=[],end;for(let i=0;i<3;i++){const k=await kl(s,1000,end);if(!k.length)break;all=k.concat(all);end=k[0].t-1}return ind(all)}
+function bt(d){let cash=1000,pos=null,pend=false,pa=0,tr=[],pk=1000,dd=0,cool=0;
+ for(let i=200;i<d.length;i++){const r=d[i];
+  if(!pos&&pend){const e=r.o*(1+cfg.slip),st=e-cfg.stopAtr*pa,tp=e+cfg.tpAtr*pa,q=Math.min(cash*cfg.risk/(e-st),cash*cfg.alloc/e);if(q>0){cash-=q*e*(1+cfg.fee);pos={q,e,st,tp,a:pa}}}
+  pend=false;
+  if(pos){let x=0;if(r.l<=pos.st)x=pos.st;else if(r.h>=pos.tp)x=pos.tp;else if(r.sell)x=r.c;
+   if(x){x*=1-cfg.slip;cash+=pos.q*x*(1-cfg.fee);tr.push(x/pos.e-1);if(x<pos.e)cool=i+6;pos=null}
+   else if(r.h-pos.e>=pos.a)pos.st=Math.max(pos.st,r.h-1.5*pos.a,pos.e*(1+2*cfg.fee))}
+  else if(r.buy&&i>=cool){pend=true;pa=r.atr}
+  const eq=cash+(pos?pos.q*r.c:0);pk=Math.max(pk,eq);dd=Math.min(dd,eq/pk-1)}
+ const last=d[d.length-1],eq=cash+(pos?pos.q*last.c:0),w=tr.filter(x=>x>0).length;
+ return{ret:(eq/1000-1)*100,hold:(last.c/d[200].c-1)*100,n:tr.length,win:tr.length?w/tr.length*100:0,dd:dd*100}}
+async function runBt(){
+ $("btr").innerHTML='<span class="mu">Running… about 15 seconds.</span>';
+ try{let out="";for(const s of SYMS){const b=bt(await hist(s));
+  out+=`<div><b>${s.replace("USDT","")}</b> <span class="${b.ret>=0?"up":"dn"}">${b.ret.toFixed(1)}%</span> vs buy &amp; hold ${b.hold.toFixed(1)}%<br><small>${b.n} trades · win rate ${b.win.toFixed(0)}% · worst dip ${b.dd.toFixed(1)}%</small></div>`}
+  $("btr").innerHTML=out+'<small class="mu">Past results do not predict future results. Judge it against buy &amp; hold.</small>'}
+ catch(e){$("btr").innerHTML='<span class="dn">Could not load history: '+e.message+'</span>'}}
+
+// ---------- start / stop ----------
+async function lock(){try{wl=await navigator.wakeLock.request("screen")}catch(e){}}
+function start(){
+ if(S.halted){notify("Account halted. Tap Reset account in Settings.");return}
+ try{ac=ac||new (window.AudioContext||window.webkitAudioContext)()}catch(e){}
+ killReq=false;lock();tick();timer=setInterval(tick,10000);$("go").textContent="Pause";}
+function stop(){clearInterval(timer);timer=null;if(wl){wl.release();wl=null}$("go").textContent="Start"}
+$("go").onclick=()=>timer?(stop(),$("st").textContent="Paused."):start();
+$("kill").onclick=()=>{killReq=true;if(!timer)start();else tick()};
+$("bt").onclick=runBt;
+$("save").onclick=()=>{cfg.tgT=$("tgT").value.trim();cfg.tgC=$("tgC").value.trim();cfg.risk=(+$("risk").value||1)/100;cfg.dayLoss=(+$("dl").value||3)/100;cfg.maxDD=(+$("md").value||10)/100;sv("c",cfg);notify("Settings saved")};
+$("reset").onclick=()=>{S=fresh();sv("s",S);render()};
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&timer){lock();tick()}});
+const BOT=()=>$("botsrc").textContent.replace(/^\n/,"");
+const flash=(b,t)=>{const o=b.textContent;b.textContent=t;setTimeout(()=>b.textContent=o,1800)};
+$("cpy").onclick=async e=>{try{await navigator.clipboard.writeText(BOT());flash(e.target,"Copied")}catch(x){flash(e.target,"Use Download")}};
+$("dl").onclick=e=>{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([BOT()],{type:"text/plain"}));a.download="bot.py";a.click();flash(e.target,"Saved")};
+$("tgT").value=cfg.tgT;$("tgC").value=cfg.tgC;$("risk").value=cfg.risk*100;$("dl").value=cfg.dayLoss*100;$("md").value=cfg.maxDD*100;
+render();kl(sel,300).then(k=>{DATA[sel]=ind(k);render()}).catch(()=>{});
+</script></body></html>
