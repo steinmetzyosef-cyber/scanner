@@ -1,0 +1,566 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Scanner"><meta name="theme-color" content="#070b14">
+<title>Crypto Scanner</title>
+<style>
+:root{--bg:#070b14;--g:rgba(255,255,255,.06);--gb:rgba(255,255,255,.1);--tx:#eef2ff;--mu:#9aa5c4;--up:#34f5b0;--dn:#ff6b8a;--ac:#8b7bff;--ac2:#22d3ee;--gold:#ffd479;--grad:linear-gradient(135deg,#8b7bff,#22d3ee)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html{font-size:16px}html.lg{font-size:19px}
+html,body{margin:0;color:var(--tx);font:1rem/1.45 ui-rounded,"SF Pro Rounded",-apple-system,system-ui,sans-serif}
+body{background:radial-gradient(800px 480px at 90% -8%,rgba(139,123,255,.3),transparent 60%),radial-gradient(700px 520px at -12% 8%,rgba(34,211,238,.18),transparent 60%),var(--bg) fixed;min-height:100vh;
+ padding:calc(env(safe-area-inset-top) + 10px) 14px calc(env(safe-area-inset-bottom) + 104px);max-width:600px;margin:auto;font-variant-numeric:tabular-nums}
+h1{font-size:1.25rem;margin:0;letter-spacing:.2px}h2{font-size:1.02rem;margin:22px 2px 8px;display:flex;justify-content:space-between;align-items:baseline}
+small,.mu{color:var(--mu);font-size:.8rem}.up{color:var(--up)}.dn{color:var(--dn)}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.pill{font-size:.78rem;padding:4px 11px;border-radius:99px;border:1px solid var(--gb);background:var(--g)}.pill.ok{color:var(--up)}.pill.bad{color:var(--dn)}
+.glass{background:var(--g);border:1px solid var(--gb);border-radius:22px;-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px)}.pad{padding:14px}
+.hero{padding:16px;background:linear-gradient(135deg,rgba(139,123,255,.26),rgba(34,211,238,.1))}
+.hero #eq{font-size:2.3rem;font-weight:800;letter-spacing:-.5px;line-height:1.1;margin:2px 0 6px}
+.chip{display:inline-block;font-size:.85rem;font-weight:700;padding:3px 10px;border-radius:99px;background:rgba(255,255,255,.08)}
+canvas{width:100%;display:block}#eqc{height:60px;margin:8px 0}
+.hrow{display:flex;justify-content:space-between;align-items:center;gap:10px}
+button,input{font:inherit}button{min-height:48px;padding:10px 14px;border:1px solid var(--gb);background:var(--g);color:var(--tx);border-radius:14px;font-weight:700}
+button.p{background:var(--grad);color:#061018;border:0;width:100%;font-size:1.08rem;min-height:54px;box-shadow:0 8px 24px rgba(34,211,238,.25)}button.r{color:var(--dn);border-color:rgba(255,107,138,.45)}button.k{min-height:40px;padding:6px 12px;font-size:.85rem}
+:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.tg{display:flex;align-items:center;gap:10px;font-weight:700;min-height:44px}.tg input{appearance:none;-webkit-appearance:none;width:52px;height:30px;border-radius:99px;background:#2a3350;position:relative;margin:0;flex:none}
+.tg input:checked{background:var(--grad)}.tg input::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:left .2s}.tg input:checked::after{left:25px}
+.seg{display:flex;gap:4px;padding:4px;margin:14px 0 0;background:var(--g);border:1px solid var(--gb);border-radius:16px}.seg button{flex:1;border:0;background:none;min-height:42px;color:var(--mu)}.seg button[aria-pressed=true]{background:var(--grad);color:#061018}
+.sig{display:grid;grid-template-columns:44px 1fr auto;gap:12px;padding:12px;margin-bottom:8px;align-items:start}.si{width:44px;height:44px;border-radius:14px;background:var(--grad);color:#061018;display:grid;place-items:center;font-size:1.4rem;font-weight:800}
+.sig b{font-size:1.02rem}.sr{text-align:right}.sr b{font-size:1.1rem}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px}.grid3>div{display:flex;flex-direction:column}.grid3 b{font-size:1.1rem}
+.coin{display:grid;grid-template-columns:1fr 78px auto;gap:12px;align-items:center;padding:12px 14px;margin-bottom:8px}
+.coin b{font-size:1.08rem}.sp{width:78px;height:30px}.cr{text-align:right}.cr b{font-size:1.15rem}
+.heat{display:flex;gap:3px;margin-top:5px}.heat i{width:14px;height:5px;border-radius:3px;background:rgba(255,255,255,.14)}.heat i.on{background:var(--mu)}.heat.hot i.on{background:var(--up)}
+.tag{font-size:.72rem;padding:1px 8px;border-radius:99px;background:var(--up);color:#06231c;font-weight:800}.tag.t{background:var(--gold);color:#241a00}.tag:empty{display:none}
+.chips{display:flex;gap:6px;overflow-x:auto;padding:2px 0 8px;scrollbar-width:none}.chips button{flex:0 0 auto;min-width:62px}.chips button[aria-pressed=true]{background:var(--grad);color:#061018;border:0}
+.big{font-size:2rem;font-weight:800;margin:2px 2px 8px}#ch{height:240px;border-radius:20px;background:var(--g);border:1px solid var(--gb)}
+.ck{padding:6px 0;border-bottom:1px solid var(--gb)}.ck:last-child{border:0}
+label{display:block;margin:12px 0 4px;color:var(--mu);font-size:.85rem}
+input[type=text],input:not([type]){width:100%;padding:12px;border-radius:12px;border:1px solid var(--gb);background:rgba(0,0,0,.3);color:var(--tx);min-height:48px}
+.row{display:flex;gap:8px;margin:8px 0}.row>*{flex:1}
+.li{padding:8px 2px;border-bottom:1px solid var(--gb);font-size:.88rem}
+nav{position:fixed;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom) + 10px);max-width:576px;margin:auto;display:flex;padding:6px;z-index:5;background:rgba(14,20,36,.82);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);border:1px solid var(--gb);border-radius:26px}
+nav button{flex:1;border:0;background:none;color:var(--mu);font-size:.72rem;min-height:56px;border-radius:20px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}
+nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}nav button[aria-current=page]{color:#061018;background:var(--grad)}
+#toast{position:fixed;left:14px;right:14px;top:calc(env(safe-area-inset-top) + 8px);background:var(--grad);color:#061018;padding:14px;border-radius:16px;font-weight:800;display:none;z-index:9;box-shadow:0 10px 30px rgba(0,0,0,.4)}
+[hidden]{display:none!important}details{margin-top:12px}summary{min-height:44px;padding:10px 0;font-weight:700}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style></head><body>
+<div id="toast" role="status" aria-live="assertive"></div>
+<div class="top"><h1>Scanner</h1><span id="conn" class="pill" role="status">Connecting…</span></div>
+<main>
+<section id="p-mkt">
+<div class="glass hero"><div class="hrow"><div><small>Paper portfolio</small><div id="eq" aria-live="polite">$0</div><span id="dy" class="chip"></span></div><button id="kill" class="r k" aria-label="Kill switch: sell everything and stop trading">Kill switch</button></div>
+<canvas id="eqc" aria-hidden="true"></canvas><div class="hrow"><small id="cs"></small><label class="tg" style="margin:0"><input type="checkbox" id="auto">Auto-trade</label></div></div>
+<div class="seg" id="tfs" role="group" aria-label="Candle size"><button data-tf="1m">1 min</button><button data-tf="5m">5 min</button><button data-tf="15m">15 min</button></div>
+<h2><span>⚡ Live signals</span><small id="sigc"></small></h2><div id="feed"></div>
+<h2><span>Watchlist</span><small>tap a coin to trade</small></h2><div id="cards"></div></section>
+<section id="p-trade" hidden>
+<div id="chips" class="chips" role="group" aria-label="Choose coin"></div><div id="big" class="big"></div>
+<canvas id="ch" role="img" aria-label="Price chart with entry, stop and target lines"></canvas>
+<small>White = live price · gold = EMA20 · grey = EMA50 · ▲ = signals · dashed = your entry, stop, target</small>
+<h2><span>Trade plan</span></h2><div id="plan" class="glass pad"></div>
+<h2><span>Checklist</span><small>last closed candle</small></h2><div id="chk" class="glass pad"></div>
+<h2><span id="th">Buy or sell</span></h2><div id="own"></div>
+<div id="buy" class="glass pad"><label for="amt" style="margin-top:0">Amount to spend ($)</label><input id="amt" inputmode="decimal">
+<div class="row"><button data-f=".25">25%</button><button data-f=".5">50%</button><button data-f="1">All cash</button><button id="sug">Suggested</button></div>
+<div class="row"><div><label for="slp">Stop: sell if it drops (%)</label><input id="slp" inputmode="decimal"></div><div><label for="tpp">Target: sell at +(%)</label><input id="tpp" inputmode="decimal"></div></div>
+<button id="buyb" class="p">Buy now</button></div>
+<button id="sellb" class="p" style="background:linear-gradient(135deg,#ff6b8a,#ff9a6b)" hidden>Sell now</button></section>
+<section id="p-port" hidden><div id="stats" class="glass pad"></div><h2><span>Open positions</span></h2><div id="pos"></div>
+<button id="sellall" class="r" style="width:100%">Sell everything</button><h2><span>Closed trades</span></h2><div id="hist" class="glass pad"></div><h2><span>Activity</span></h2><div id="log" class="glass pad"></div></section>
+<section id="p-more" hidden><h2><span>Signal style</span></h2><div class="seg" id="profs" style="margin-top:0" role="group" aria-label="Signal style"><button data-prof="aggr">Aggressive</button><button data-prof="bal">Balanced</button><button data-prof="strict">Strict</button></div>
+<p class="mu" id="profd"></p>
+<h2><span>Backtest</span></h2><button id="bt" style="width:100%">Test this style on recent history</button><div id="btr" class="mu" style="margin-top:8px"></div>
+<h2><span>Settings</span></h2><div class="glass pad">
+<label style="margin-top:0">Paper money amount ($, applies on reset)</label><input id="st0" inputmode="decimal">
+<label>Risk per trade (%)</label><input id="risk" inputmode="decimal"><label>Daily loss limit (%)</label><input id="dl" inputmode="decimal"><label>Max drawdown (%)</label><input id="md" inputmode="decimal">
+<label>Telegram bot token (optional)</label><input id="tgT" autocomplete="off"><label>Telegram chat ID</label><input id="tgC" autocomplete="off">
+<label class="tg"><input type="checkbox" id="lg">Larger text</label>
+<div class="row"><button id="save">Save settings</button><button id="reset" class="r">Reset account</button></div></div>
+<details><summary>Server bot (optional, runs 24/7 on a computer)</summary><p class="mu">Run <b>pip install ccxt pandas numpy matplotlib requests</b> then <b>python bot.py paper</b>.</p>
+<div class="row"><button id="cpy">Copy bot code</button><button id="dl">Download bot.py</button></div></details></section>
+</main>
+<nav aria-label="Main"><button data-t="mkt" aria-current="page"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Market</button><button data-t="trade"><svg viewBox="0 0 24 24"><path d="M7 8h13l-3-3M17 16H4l3 3"/></svg>Trade</button><button data-t="port"><svg viewBox="0 0 24 24"><path d="M3 8h18v11H3zM3 8l3-4h12l3 4M16 13.5h2"/></svg>Portfolio</button><button data-t="more"><svg viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9M13 5v4M7 15v4"/></svg>More</button></nav>
+<script type="text/plain" id="botsrc">
+#!/usr/bin/env python3
+"""
+Crypto trading bot: 24/7 scanner, trend signals, risk controls, backtester.
+Modes:  backtest | paper (default, fake money) | live (real money)
+Install: pip install ccxt pandas numpy matplotlib requests
+Usage:  python bot.py backtest --days 90
+        python bot.py paper
+        python bot.py live --i-understand
+Kill switch: create a file named STOP in this folder, or let the automatic
+daily-loss / drawdown limits trip. The bot closes positions and halts.
+NOT financial advice. No bot guarantees profit. Start in paper mode.
+"""
+import os, sys, time, json, argparse, logging
+from datetime import datetime, timezone
+import numpy as np
+import pandas as pd
+import ccxt
+
+# ------------------------- SETTINGS (edit these) -------------------------
+CFG = dict(
+    exchange="binance",            # any ccxt exchange id: kraken, coinbase, bybit...
+    quote="USDT",
+    symbols=["BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT", "XRP/USDT"],
+    timeframe="5m",
+    scan_seconds=10,               # market rescan interval
+    start_balance=1000.0,          # paper / backtest starting cash
+    risk_per_trade=0.01,           # risk 1% of equity per trade
+    stop_atr=2.0,                  # stop-loss  = entry - 2 x ATR
+    take_atr=3.0,                  # take-profit = entry + 3 x ATR
+    max_positions=3,
+    max_alloc_per_trade=0.33,      # never put more than 33% of equity in one coin
+    daily_loss_limit=0.03,         # halt if down 3% on the day
+    max_drawdown=0.10,             # halt if 10% below peak equity
+    fee=0.001,                     # 0.1% per side
+    slippage=0.0005,               # 0.05% assumed slippage
+)
+STATE_FILE, TRADE_LOG, STOP_FILE = "state.json", "trades.csv", "STOP"
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s",
+                    handlers=[logging.StreamHandler(), logging.FileHandler("bot.log")])
+log = logging.info
+
+# ------------------------- INDICATORS & SIGNALS -------------------------
+def add_signals(df):
+    c = df.close
+    df["ema_f"] = c.ewm(span=20, adjust=False).mean()
+    df["ema_s"] = c.ewm(span=50, adjust=False).mean()
+    d = c.diff()
+    up = d.clip(lower=0).ewm(alpha=1/14, adjust=False).mean()
+    dn = (-d.clip(upper=0)).ewm(alpha=1/14, adjust=False).mean()
+    df["rsi"] = 100 - 100 / (1 + up / dn.replace(0, np.nan))
+    macd = c.ewm(span=12, adjust=False).mean() - c.ewm(span=26, adjust=False).mean()
+    df["macd_h"] = macd - macd.ewm(span=9, adjust=False).mean()
+    tr = pd.concat([df.high - df.low, (df.high - c.shift()).abs(),
+                    (df.low - c.shift()).abs()], axis=1).max(axis=1)
+    df["atr"] = tr.ewm(alpha=1/14, adjust=False).mean()
+    up_, dn_ = df.high.diff(), -df.low.diff()
+    pdm = pd.Series(np.where((up_ > dn_) & (up_ > 0), up_, 0.0), index=df.index)
+    mdm = pd.Series(np.where((dn_ > up_) & (dn_ > 0), dn_, 0.0), index=df.index)
+    pdi = 100 * pdm.ewm(alpha=1/14, adjust=False).mean() / df.atr
+    mdi = 100 * mdm.ewm(alpha=1/14, adjust=False).mean() / df.atr
+    dx = 100 * (pdi - mdi).abs() / (pdi + mdi).replace(0, np.nan)
+    df["adx"] = dx.ewm(alpha=1/14, adjust=False).mean()   # trend strength (filters chop)
+    df["ema200"] = c.ewm(span=200, adjust=False).mean()    # long-term trend filter
+    df["vol_ratio"] = df.volume / df.volume.rolling(20).mean()
+    df["trend"] = np.where(df.ema_f > df.ema_s, "UP", "DOWN")
+    ok = ((df.ema_f > df.ema_s) & (c > df.ema_s) & (df.macd_h > 0) &
+          (df.macd_h > df.macd_h.shift()) & df.rsi.between(50, 70) & (df.vol_ratio > 1) &
+          (df.adx > 20) & (c > df.ema200))
+    df["buy"] = ok & ~ok.shift(fill_value=False)       # fresh entry signal only
+    df["sell"] = (df.ema_f < df.ema_s) | (df.rsi > 80)  # trend flip / overheated
+    return df
+
+def to_df(raw):
+    df = pd.DataFrame(raw, columns=["ts", "open", "high", "low", "close", "volume"])
+    df = df.drop_duplicates("ts").reset_index(drop=True)
+    df["time"] = pd.to_datetime(df.ts, unit="ms")
+    return add_signals(df)
+
+def make_exchange(keys=False):
+    p = {"enableRateLimit": True}
+    if keys:
+        p.update(apiKey=os.environ["API_KEY"], secret=os.environ["API_SECRET"])
+    return getattr(ccxt, CFG["exchange"])(p)
+
+def notify(msg):
+    log(msg)
+    t, c = os.getenv("TELEGRAM_TOKEN"), os.getenv("TELEGRAM_CHAT_ID")
+    if t and c:
+        try:
+            import requests
+            requests.post(f"https://api.telegram.org/bot{t}/sendMessage",
+                          data={"chat_id": c, "text": msg}, timeout=5)
+        except Exception as e:
+            log(f"telegram failed: {e}")
+
+# ------------------------- BACKTEST -------------------------
+def fetch_history(ex, sym, tf, days):
+    step = ex.parse_timeframe(tf) * 1000
+    since, out = ex.milliseconds() - days * 86400000, []
+    while since < ex.milliseconds():
+        b = ex.fetch_ohlcv(sym, tf, since=since, limit=1000)
+        if not b: break
+        out += b
+        since = b[-1][0] + step
+        if len(b) < 2: break
+    return to_df(out)
+
+def backtest_symbol(df):
+    cash, pos, pending, trades, eq = CFG["start_balance"], None, False, [], []
+    f, s = CFG["fee"], CFG["slippage"]
+    cool = 0
+    for i in range(200, len(df)):
+        r = df.iloc[i]
+        if pos is None and pending and not np.isnan(r.atr):
+            entry = r.open * (1 + s)
+            stop, tp = entry - CFG["stop_atr"] * pos_atr, entry + CFG["take_atr"] * pos_atr
+            risk_cash = cash * CFG["risk_per_trade"]
+            qty = min(risk_cash / (entry - stop), cash * CFG["max_alloc_per_trade"] / entry)
+            if qty > 0:
+                cash -= qty * entry * (1 + f)
+                pos = dict(qty=qty, entry=entry, stop=stop, tp=tp, t=r.time, a=pos_atr)
+        pending = False
+        if pos:
+            exit_p = None
+            if r.low <= pos["stop"]: exit_p, why = pos["stop"], "stop"
+            elif r.high >= pos["tp"]: exit_p, why = pos["tp"], "target"
+            elif r.sell: exit_p, why = r.close, "trend flip"
+            if exit_p:
+                exit_p *= (1 - s)
+                cash += pos["qty"] * exit_p * (1 - f)
+                trades.append(dict(open=pos["t"], close=r.time, entry=pos["entry"], exit=exit_p,
+                                   pnl_pct=(exit_p / pos["entry"] - 1) * 100, why=why))
+                if exit_p < pos["entry"]: cool = i + 6   # 30-min cooldown after a loss
+                pos = None
+            elif r.high - pos["entry"] >= pos["a"]:   # breakeven + trailing stop
+                pos["stop"] = max(pos["stop"], r.high - 1.5 * pos["a"], pos["entry"] * (1 + 2 * f))
+        elif r.buy and i >= cool:
+            pending, pos_atr = True, r.atr
+        eq.append(cash + (pos["qty"] * r.close if pos else 0))
+    return pd.DataFrame(trades), pd.Series(eq, index=df.time[200:])
+
+def run_backtest(days):
+    import matplotlib; matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    ex = make_exchange()
+    for sym in CFG["symbols"]:
+        df = fetch_history(ex, sym, CFG["timeframe"], days)
+        tr, eq = backtest_symbol(df)
+        ret = (eq.iloc[-1] / CFG["start_balance"] - 1) * 100
+        hold = (df.close.iloc[-1] / df.close.iloc[200] - 1) * 100
+        dd = ((eq / eq.cummax()) - 1).min() * 100
+        wins = (tr.pnl_pct > 0).mean() * 100 if len(tr) else 0
+        gp = tr.pnl_pct[tr.pnl_pct > 0].sum() if len(tr) else 0
+        gl = -tr.pnl_pct[tr.pnl_pct < 0].sum() if len(tr) else 0
+        notify(f"{sym} {days}d | return {ret:+.1f}% vs buy&hold {hold:+.1f}% | trades {len(tr)} | "
+               f"win {wins:.0f}% | profit factor {gp / gl if gl else float('inf'):.2f} | max DD {dd:.1f}%")
+        fig, ax = plt.subplots(2, 1, figsize=(14, 8), sharex=True, gridspec_kw={"height_ratios": [3, 1]})
+        ax[0].plot(df.time, df.close, lw=.8, label="price")
+        ax[0].plot(df.time, df.ema_f, lw=.6, label="EMA20"); ax[0].plot(df.time, df.ema_s, lw=.6, label="EMA50")
+        if len(tr):
+            ax[0].scatter(tr.open, tr.entry, marker="^", c="g", s=40, label="buy")
+            ax[0].scatter(tr.close, tr.exit, marker="v", c="r", s=40, label="sell")
+        ax[0].legend(); ax[0].set_title(f"{sym} {CFG['timeframe']}  return {ret:+.1f}%")
+        ax[1].plot(eq.index, eq.values); ax[1].set_title("Equity")
+        fig.tight_layout(); fig.savefig(f"backtest_{sym.replace('/', '_')}.png", dpi=110); plt.close(fig)
+        tr.to_csv(f"backtest_{sym.replace('/', '_')}_trades.csv", index=False)
+
+# ------------------------- LIVE / PAPER ENGINE -------------------------
+def load_state():
+    if os.path.exists(STATE_FILE):
+        return json.load(open(STATE_FILE))
+    return dict(cash=CFG["start_balance"], pos={}, peak=CFG["start_balance"],
+                day=str(datetime.now(timezone.utc).date()), day_start=CFG["start_balance"], halted=False)
+
+def save_state(st): json.dump(st, open(STATE_FILE, "w"), indent=1)
+
+def log_trade(row):
+    pd.DataFrame([row]).to_csv(TRADE_LOG, mode="a", header=not os.path.exists(TRADE_LOG), index=False)
+
+def run_bot(live):
+    ex = make_exchange(keys=live)
+    ex.load_markets()
+    st = load_state()
+    notify(f"Bot started in {'LIVE' if live else 'PAPER'} mode on {CFG['exchange']}")
+    f = CFG["fee"]
+
+    def equity(prices):
+        return st["cash"] + sum(p["qty"] * prices.get(s, p["entry"]) for s, p in st["pos"].items())
+
+    def close_pos(sym, price, why):
+        p = st["pos"].pop(sym)
+        if live:
+            ex.create_market_sell_order(sym, ex.amount_to_precision(sym, p["qty"]))
+        st["cash"] += p["qty"] * price * (1 - f)
+        pnl = (price / p["entry"] - 1) * 100
+        if pnl < 0: st.setdefault("cool", {})[sym] = time.time() + 1800
+        log_trade(dict(time=datetime.now(timezone.utc).isoformat(), symbol=sym, side="SELL",
+                       price=price, qty=p["qty"], pnl_pct=round(pnl, 2), reason=why))
+        notify(f"SELL {sym} @ {price:.4f} ({pnl:+.2f}%) - {why}")
+
+    while True:
+        try:
+            if live:
+                st["cash"] = ex.fetch_balance()["free"].get(CFG["quote"], 0)
+            today = str(datetime.now(timezone.utc).date())
+            data, prices = {}, {}
+            for sym in CFG["symbols"]:
+                data[sym] = to_df(ex.fetch_ohlcv(sym, CFG["timeframe"], limit=300))
+                prices[sym] = float(data[sym].close.iloc[-1])
+            eq = equity(prices)
+            if today != st["day"]:
+                st["day"], st["day_start"] = today, eq
+            st["peak"] = max(st["peak"], eq)
+
+            # ---- automatic kill switch ----
+            reason = None
+            if os.path.exists(STOP_FILE): reason = "STOP file found"
+            elif eq < st["day_start"] * (1 - CFG["daily_loss_limit"]): reason = "daily loss limit hit"
+            elif eq < st["peak"] * (1 - CFG["max_drawdown"]): reason = "max drawdown hit"
+            if reason and not st["halted"]:
+                for s in list(st["pos"]): close_pos(s, prices[s], f"KILL SWITCH: {reason}")
+                st["halted"] = True
+                notify(f"BOT HALTED: {reason}. Equity {eq:.2f}. Delete state.json/STOP to reset.")
+            if st["halted"]:
+                save_state(st); log("halted; exiting"); return
+
+            # ---- manage open positions (check live price vs stop/target) ----
+            for s in list(st["pos"]):
+                p, px, last = st["pos"][s], prices[s], data[s].iloc[-2]
+                if px <= p["stop"]: close_pos(s, px, "stop-loss")
+                elif px >= p["tp"]: close_pos(s, px, "take-profit")
+                elif last.sell: close_pos(s, px, "trend flip / RSI>80")
+                elif px - p["entry"] >= p.get("a", 0) > 0:
+                    p["stop"] = max(p["stop"], px - 1.5 * p["a"], p["entry"] * (1 + 2 * f))
+
+            # ---- look for entries on the last CLOSED candle ----
+            for sym in CFG["symbols"]:
+                last = data[sym].iloc[-2]
+                if (sym in st["pos"] or len(st["pos"]) >= CFG["max_positions"] or not last.buy
+                        or st.setdefault("last", {}).get(sym) == int(last.ts)
+                        or st.get("cool", {}).get(sym, 0) > time.time()):
+                    continue
+                px = prices[sym] * (1 + CFG["slippage"])
+                stop, tp = px - CFG["stop_atr"] * last.atr, px + CFG["take_atr"] * last.atr
+                qty = min(eq * CFG["risk_per_trade"] / (px - stop),
+                          eq * CFG["max_alloc_per_trade"] / px, st["cash"] / (px * (1 + f)))
+                if qty * px < 10: continue
+                if live:
+                    qty = float(ex.amount_to_precision(sym, qty))
+                    ex.create_market_buy_order(sym, qty)
+                st["cash"] -= qty * px * (1 + f)
+                st["pos"][sym] = dict(qty=qty, entry=px, stop=stop, tp=tp, a=float(last.atr))
+                st["last"][sym] = int(last.ts)  # don't re-enter on the same candle
+                log_trade(dict(time=datetime.now(timezone.utc).isoformat(), symbol=sym, side="BUY",
+                               price=px, qty=qty, pnl_pct="", reason="signal"))
+                notify(f"BUY {sym} @ {px:.4f} | stop {stop:.4f} | target {tp:.4f}")
+
+            save_state(st)
+            table = " | ".join(f"{s.split('/')[0]} {prices[s]:.2f} {data[s].trend.iloc[-1]} "
+                               f"RSI{data[s].rsi.iloc[-1]:.0f}" for s in CFG["symbols"])
+            log(f"EQ {eq:.2f} (day {eq / st['day_start'] * 100 - 100:+.2f}%) pos {list(st['pos'])} || {table}")
+        except (ccxt.NetworkError, ccxt.ExchangeNotAvailable) as e:
+            log(f"network issue, retrying: {e}")
+        except Exception as e:
+            notify(f"ERROR: {e}")
+        time.sleep(CFG["scan_seconds"])
+
+# ------------------------- ENTRY POINT -------------------------
+if __name__ == "__main__":
+    ap = argparse.ArgumentParser()
+    ap.add_argument("mode", choices=["backtest", "paper", "live"])
+    ap.add_argument("--days", type=int, default=90)
+    ap.add_argument("--i-understand", action="store_true", help="required for live trading")
+    a = ap.parse_args()
+    if a.mode == "backtest": run_backtest(a.days)
+    elif a.mode == "paper": run_bot(live=False)
+    else:
+        if not a.i_understand: sys.exit("Live mode risks real money. Add --i-understand to proceed.")
+        run_bot(live=True)
+</script>
+<script>
+const SYMS=["BTCUSDT","ETHUSDT","SOLUSDT","BNBUSDT","XRPUSDT","DOGEUSDT","ADAUSDT","AVAXUSDT","LINKUSDT","LTCUSDT"],BASE="https://data-api.binance.vision/api/v3/",TFS={"1m":60,"5m":300,"15m":900};
+const PROF={aggr:{n:"Aggressive",d:"Most signals. Trend entries, breakouts, dip bounces and momentum crosses. Tighter stops, quicker targets.",ms:4,lo:45,hi:72,adx:18,vol:1,bv:1.1,e2:0,dip:1,mx:1,flip:0,sa:1.5,ta:2.5},
+ bal:{n:"Balanced",d:"Fewer, cleaner signals: trend and breakouts that need stronger confirmation.",ms:5,lo:48,hi:70,adx:20,vol:1,bv:1.5,e2:0,dip:0,mx:0,flip:1,sa:2,ta:3},
+ strict:{n:"Strict",d:"Rare, high-confidence trend entries only. Expect long quiet stretches.",ms:6,lo:50,hi:70,adx:20,vol:1,bv:99,e2:1,dip:0,mx:0,flip:1,sa:2,ta:3}};
+const LBL={TREND:["↗","Trend"],BREAKOUT:["⚡","Breakout"],DIP:["↺","Dip bounce"],MOMENTUM:["✦","Momentum"]};
+const $=id=>document.getElementById(id),today=()=>new Date().toISOString().slice(0,10),nm=s=>s.replace("USDT","");
+const ld=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))||d}catch(e){return d}},sv=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
+const fp=p=>p>=100?p.toFixed(2):p>=1?p.toFixed(3):p.toFixed(5),m$=n=>(n<0?"-$":"$")+Math.abs(n).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}),sg=n=>(n>=0?"+":"")+n.toFixed(2)+"%";
+const set=(id,h)=>{const e=$(id);if(e._h!==h){e._h=h;e.innerHTML=h}};
+let cfg=Object.assign({start:1000,risk:.015,maxPos:4,alloc:.22,dayLoss:.04,maxDD:.12,fee:.001,slip:.0005,tgT:"",tgC:"",lg:false,prof:"aggr",tf:"5m"},ld("c2",{}));
+let P=PROF[cfg.prof],TF=cfg.tf;const applyP=()=>{P=PROF[cfg.prof];cfg.stopAtr=P.sa;cfg.tpAtr=P.ta};applyP();
+const fresh=()=>({start:cfg.start,cash:cfg.start,pos:{},peak:cfg.start,day:today(),dayStart:cfg.start,halted:false,auto:true,last:{},cool:{},log:[],hist:[],real:0,n:0,w:0,seen:[],eqh:[]});
+let S=Object.assign(fresh(),ld("s",{})),DATA={},RAW={},PX={},PV={},sel="BTCUSDT",tab="mkt",ac=null,wl=null,fails=0,lastOk=0,kBusy=false,cnt=0,primed=false,FEED=[];
+const ema=(a,n)=>{const k=2/(n+1);let e=a[0];return a.map((v,i)=>i?(e=v*k+e*(1-k)):e)};
+function ind(K){
+ const c=K.map(x=>x.c),f=ema(c,20),s=ema(c,50),e2=ema(c,200),e12=ema(c,12),e26=ema(c,26),m=e12.map((v,i)=>v-e26[i]),g9=ema(m,9);
+ let au=0,ad=0,at=0,sp=0,sm=0,ax=0;
+ K.forEach((x,i)=>{const p=i?K[i-1]:x,d=x.c-p.c;
+  au+=(Math.max(d,0)-au)/14;ad+=(Math.max(-d,0)-ad)/14;x.rsi=ad?100-100/(1+au/ad):100;
+  at+=((i?Math.max(x.h-x.l,Math.abs(x.h-p.c),Math.abs(x.l-p.c)):x.h-x.l)-at)/14;x.atr=at;
+  const u=x.h-p.h,dm=p.l-x.l;sp+=((u>dm&&u>0?u:0)-sp)/14;sm+=((dm>u&&dm>0?dm:0)-sm)/14;
+  const pi=at?100*sp/at:0,mi=at?100*sm/at:0;ax+=((pi+mi?100*Math.abs(pi-mi)/(pi+mi):0)-ax)/14;x.adx=ax;
+  let vs=0,nn=0;for(let j=Math.max(0,i-19);j<=i;j++){vs+=K[j].v;nn++}x.vr=x.v/(vs/nn);
+  let hh=0;for(let j=Math.max(0,i-20);j<i;j++)hh=Math.max(hh,K[j].h);
+  x.f=f[i];x.s=s[i];x.e2=e2[i];x.mh=m[i]-g9[i];x.pmh=i?m[i-1]-g9[i-1]:0;
+  x.c1=x.f>x.s;x.c2=x.c>x.f;x.c3=x.mh>x.pmh;x.c4=x.rsi>=P.lo&&x.rsi<=P.hi;x.c5=x.vr>P.vol;x.c6=x.adx>P.adx;
+  x.sc=x.c1+x.c2+x.c3+x.c4+x.c5+x.c6;
+  x.tk=x.sc>=P.ms&&x.c1&&x.c3&&(!P.e2||x.c>x.e2);x.bk=hh>0&&x.c>hh&&x.vr>P.bv&&x.c1;
+  const dip=P.dip&&p.rsi<35&&x.rsi>=35&&x.c>p.c,mx=P.mx&&x.mh>0&&x.pmh<=0&&x.c>x.s&&x.rsi<75;
+  x.sig=x.tk&&!p.tk?"TREND":x.bk&&!p.bk?"BREAKOUT":dip?"DIP":mx?"MOMENTUM":"";
+  x.buy=!!x.sig;x.sell=x.rsi>80||(P.flip&&x.f<x.s)});return K}
+async function kl(sym,limit,end){const r=await fetch(`${BASE}klines?symbol=${sym}&interval=${TF}&limit=${limit}`+(end?`&endTime=${end}`:""));if(!r.ok)throw new Error("data "+r.status);
+ return (await r.json()).map(r=>({t:+r[0],o:+r[1],h:+r[2],l:+r[3],c:+r[4],v:+r[5]}))}
+const toK=a=>a.map(r=>({t:r[0],o:r[1],h:r[2],l:r[3],c:r[4],v:r[5]}));
+function rebuild(){for(const s of SYMS)if(RAW[s])DATA[s]=ind(toK(RAW[s]));SYMS.forEach(spark)}
+const cond=r=>[["Uptrend: EMA20 above EMA50",r.c1],["Price above EMA20",r.c2],["Momentum rising (MACD)",r.c3],[`RSI ${r.rsi.toFixed(0)} (needs ${P.lo} to ${P.hi})`,r.c4],["Volume above average",r.c5],[`Trend strength: ADX ${r.adx.toFixed(0)} (needs ${P.adx}+)`,r.c6]];
+const eq=()=>{let e=S.cash;for(const s in S.pos)e+=S.pos[s].q*(PX[s]||S.pos[s].entry);return e};
+const lastC=s=>{const d=DATA[s];return d&&d[d.length-2]};
+const sugg=s=>{const r=lastC(s),px=PX[s];if(!r||!px)return 0;const e=eq();return Math.max(0,Math.min(e*cfg.risk/(cfg.stopAtr*r.atr),e*cfg.alloc/px,S.cash/(px*(1+cfg.fee)))*px)};
+
+// ---------- alerts ----------
+function toast(m){const t=$("toast");t.textContent=m;t.style.display="block";clearTimeout(t._t);t._t=setTimeout(()=>t.style.display="none",4500)}
+function notify(m){S.log.unshift(new Date().toLocaleTimeString()+"  "+m);S.log=S.log.slice(0,40);toast(m);
+ try{const o=ac.createOscillator(),g=ac.createGain();o.connect(g);g.connect(ac.destination);o.frequency.value=880;g.gain.value=.2;o.start();o.stop(ac.currentTime+.25)}catch(e){}
+ if(cfg.tgT&&cfg.tgC)fetch(`https://api.telegram.org/bot${cfg.tgT}/sendMessage`,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:new URLSearchParams({chat_id:cfg.tgC,text:m})}).catch(()=>{})}
+
+// ---------- paper trading engine ----------
+function open(s,amt,sp,tp,a,man,k){
+ const px=PX[s]*(1+cfg.slip),q=amt/(px*(1+cfg.fee));S.cash-=q*px*(1+cfg.fee);
+ S.pos[s]={q,entry:px,stop:px*(1-sp/100),tp:px*(1+tp/100),a,m:man,k,t:Date.now()};
+ notify(`${man?"MANUAL ":""}BUY ${nm(s)} @ ${fp(px)} | stop ${fp(S.pos[s].stop)} | target ${fp(S.pos[s].tp)}`)}
+function close(s,p,why){
+ const q=S.pos[s],net=p*(1-cfg.slip);S.cash+=q.q*net*(1-cfg.fee);delete S.pos[s];
+ const usd=(net*(1-cfg.fee)-q.entry*(1+cfg.fee))*q.q,pc=(net/q.entry-1)*100;
+ S.real+=usd;S.n++;if(usd>0)S.w++;if(usd<0)S.cool[s]=Date.now()+(TFS[TF]*3e3);
+ S.hist.unshift({t:Date.now(),s,pc,usd,why});S.hist=S.hist.slice(0,60);
+ notify(`SELL ${nm(s)} @ ${fp(net)} (${sg(pc)}, ${m$(usd)}) - ${why}`)}
+function kill(why){for(const s of Object.keys(S.pos))close(s,PX[s],"KILL: "+why);S.halted=true;S.auto=false;notify("TRADING HALTED: "+why);sv("s",S)}
+function manage(){
+ if(S.halted)return;const e=eq();if(today()!==S.day){S.day=today();S.dayStart=e}S.peak=Math.max(S.peak,e);
+ if(e<S.dayStart*(1-cfg.dayLoss))return kill("daily loss limit");if(e<S.peak*(1-cfg.maxDD))return kill("max drawdown");
+ for(const s of Object.keys(S.pos)){const p=S.pos[s],px=PX[s];if(!px)continue;
+  if(px<=p.stop)close(s,px,px>p.entry?"trailing stop":"stop-loss");else if(px>=p.tp)close(s,px,"take-profit");
+  else if(p.a&&px-p.entry>=p.a)p.stop=Math.max(p.stop,px-1.5*p.a,p.entry*(1+2*cfg.fee))}
+ sv("s",S)}
+function signals(){
+ for(const s of SYMS){const d=DATA[s];if(d&&!PX[s])PX[s]=d[d.length-1].c}
+ for(const s of SYMS){const r=lastC(s);if(!r||!r.sig)continue;const key=s+TF+r.t;
+  if(!S.seen.includes(key)){S.seen.unshift(key);S.seen=S.seen.slice(0,120);
+   if(primed)notify(`SIGNAL ${nm(s)} ${LBL[r.sig][1]} @ ${fp(PX[s])} | stop ${fp(PX[s]-cfg.stopAtr*r.atr)} | target ${fp(PX[s]+cfg.tpAtr*r.atr)}`)}}
+ primed=true;if(S.halted)return;
+ for(const s of Object.keys(S.pos)){const r=lastC(s);if(r&&r.sell&&!S.pos[s].m)close(s,PX[s],"trend flip")}
+ if(S.auto)for(const s of SYMS){const r=lastC(s);
+  if(!r||S.pos[s]||Object.keys(S.pos).length>=cfg.maxPos||!r.buy||S.last[s]===r.t||(S.cool[s]>Date.now()))continue;
+  const px=PX[s],amt=sugg(s);if(amt<10)continue;S.last[s]=r.t;open(s,amt,cfg.stopAtr*r.atr/px*100,cfg.tpAtr*r.atr/px*100,r.atr,false,r.sig)}
+ sv("s",S)}
+function feedList(){const a=[];for(const s of SYMS){const d=DATA[s];if(!d)continue;for(let i=d.length-2;i>=Math.max(1,d.length-60);i--)if(d[i].sig)a.push({s,x:d[i]})}return a.sort((p,q)=>q.x.t-p.x.t).slice(0,8)}
+function buildFeed(){FEED=feedList();const k=FEED.map(f=>f.s+f.x.t).join()+TF+cfg.prof;if($("feed")._k===k)return;$("feed")._k=k;
+ $("feed").innerHTML=FEED.length?FEED.map(f=>{const x=f.x,id=f.s+x.t,L=LBL[x.sig],tm=new Date(x.t+TFS[TF]*1e3).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
+  return`<div class="glass sig" data-pick="${f.s}" role="button" tabindex="0"><div class="si">${L[0]}</div><div><b>${nm(f.s)} · ${L[1]}</b><br><small>signal at ${tm} · <span id="fs-${id}"></span></small>
+  <div class="grid3"><div><small>Buy-in</small><b>${fp(x.c)}</b></div><div><small>Stop</small><b class="dn">${fp(x.c-cfg.stopAtr*x.atr)}</b></div><div><small>Target</small><b class="up">${fp(x.c+cfg.tpAtr*x.atr)}</b></div></div></div>
+  <div class="sr"><b id="fn-${id}"></b><br><small>since</small></div></div>`}).join(""):'<div class="glass pad mu">No signals in the last candles yet. Scanning 10 coins; new ones appear here the moment they fire. Try a shorter candle size or the Aggressive style.</div>';
+ $("sigc").textContent=FEED.length+" recent"}
+function spark(s){const d=DATA[s],e=$("sp-"+s);if(!d||!e)return;const v=d.slice(-40).map(x=>x.c),lo=Math.min(...v),hi=Math.max(...v)||1;
+ e.setAttribute("points",v.map((q,i)=>(i*80/(v.length-1)).toFixed(1)+","+(26-(q-lo)/((hi-lo)||1)*24).toFixed(1)).join(" "));e.setAttribute("stroke",v[v.length-1]>=v[0]?"#34f5b0":"#ff6b8a")}
+
+// ---------- live data ----------
+async function refreshK(){if(kBusy)return;kBusy=true;
+ try{const raw={};await Promise.all(SYMS.map(async s=>{const k=await kl(s,300);raw[s]=k.map(x=>[x.t,x.o,x.h,x.l,x.c,x.v])}));
+  Object.assign(RAW,raw);rebuild();sv("k"+TF,raw);signals();buildFeed();if(!$("amt").value)prefill()}catch(e){}kBusy=false}
+async function loop(){
+ try{const r=await fetch(BASE+"ticker/price?symbols="+encodeURIComponent(JSON.stringify(SYMS)));if(!r.ok)throw 0;
+  PV=Object.assign({},PX);(await r.json()).forEach(x=>PX[x.symbol]=+x.price);fails=0;lastOk=Date.now();manage()}catch(e){fails++}
+ if(cnt%5===0){S.eqh.push(eq());S.eqh=S.eqh.slice(-240);refreshK()}cnt++;status();render();setTimeout(loop,1000)}
+function status(){const ok=lastOk&&fails<3&&navigator.onLine!==false,c=$("conn");
+ c.textContent=!lastOk&&fails<3?"Connecting…":ok?"● Live · "+Math.round((Date.now()-lastOk)/1000)+"s":"○ Offline · saved data";c.className="pill "+(ok?"ok":"bad")}
+
+// ---------- screens ----------
+function prefill(){const r=lastC(sel),px=PX[sel];if(!r||!px)return;$("slp").value=(cfg.stopAtr*r.atr/px*100).toFixed(2);$("tpp").value=(cfg.tpAtr*r.atr/px*100).toFixed(2);$("amt").value=sugg(sel).toFixed(2)}
+function go(t){tab=t;for(const k of ["mkt","trade","port","more"])$("p-"+k).hidden=k!==t;
+ document.querySelectorAll("nav button").forEach(b=>b.setAttribute("aria-current",b.dataset.t===t?"page":"false"));render();scrollTo(0,0)}
+function render(){
+ const e=eq(),dp=(e/S.dayStart-1)*100;$("eq").textContent=m$(e);const dy=$("dy");dy.textContent=`${dp>=0?"▲":"▼"} ${sg(dp)} today`;dy.className="chip "+(dp>=0?"up":"dn");$("cs").textContent="Cash "+m$(S.cash)+" · "+Object.keys(S.pos).length+" open";
+ $("auto").checked=S.auto;
+ if(tab==="mkt"){eqDraw();
+  document.querySelectorAll("#tfs button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.tf===TF));
+  for(const f of FEED){const id=f.s+f.x.t,px=PX[f.s];if(!px)continue;const pc=(px/f.x.c-1)*100,a=f.x.atr,st=f.x.c-cfg.stopAtr*a,en=$("fn-"+id),sx=$("fs-"+id);
+   if(en){en.textContent=sg(pc);en.className=pc>=0?"up":"dn"}
+   if(sx)sx.textContent=px<=st?"stop level hit":px>=f.x.c+cfg.tpAtr*a?"target reached":px<=f.x.c+.5*a?"still in buy zone":"already moved up"}
+  for(const s of SYMS){const px=PX[s],r=lastC(s);if(!px||!r){$("cp-"+s).textContent="…";continue}
+   const up=PV[s]===undefined?0:px-PV[s];$("cp-"+s).textContent=(up>0?"▲ ":up<0?"▼ ":"")+fp(px);$("cp-"+s).className=up>0?"up":up<0?"dn":"";
+   $("ct-"+s).textContent=`${r.c1?"Uptrend":"Downtrend"} · RSI ${r.rsi.toFixed(0)}`;
+   const h=$("ht-"+s);h.className="heat"+(r.sc>=P.ms?" hot":"");h.children.length&&[...h.children].forEach((i,n)=>i.className=n<r.sc?"on":"");
+   $("cb-"+s).textContent=S.pos[s]?"in trade":r.sig?LBL[r.sig][0]+" "+LBL[r.sig][1]:"";$("cb-"+s).className="tag"+(S.pos[s]?" t":"")}}
+ if(tab==="trade")tradeUI();if(tab==="port")portUI()}
+function eqDraw(){const cv=$("eqc"),a=S.eqh;if(!cv.clientWidth||a.length<2)return;const w=cv.clientWidth,h=cv.clientHeight,dp=devicePixelRatio||1;cv.width=w*dp;cv.height=h*dp;
+ const g=cv.getContext("2d");g.scale(dp,dp);const lo=Math.min(...a),hi=Math.max(...a),X=i=>i*w/(a.length-1),Y=v=>h-6-(v-lo)/((hi-lo)||1)*(h-12);
+ const gr=g.createLinearGradient(0,0,w,0);gr.addColorStop(0,"#8b7bff");gr.addColorStop(1,"#22d3ee");
+ g.beginPath();a.forEach((v,i)=>i?g.lineTo(X(i),Y(v)):g.moveTo(X(i),Y(v)));g.strokeStyle=gr;g.lineWidth=2.5;g.lineJoin="round";g.stroke();
+ g.lineTo(w,h);g.lineTo(0,h);g.fillStyle="rgba(139,123,255,.15)";g.fill()}
+function tradeUI(){const s=sel,px=PX[s],r=lastC(s);
+ document.querySelectorAll("#chips button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.chip===s));
+ set("big",`${nm(s)}/USDT <span class="${PV[s]&&px<PV[s]?"dn":"up"}">${px?fp(px):"…"}</span>`);
+ if(!r||!px){set("plan","Loading prices…");return}
+ const a=r.atr,stop=px-cfg.stopAtr*a,tp=px+cfg.tpAtr*a,c=cond(r),met=c.filter(x=>x[1]).length;
+ set("plan",`<div class="grid3"><div><small>BUY-IN (entry)</small><b>${fp(px)}</b><small>${r.sig?"✔ "+LBL[r.sig][1]+" signal":met+"/6 ready"}</small></div><div><small>EXIT: STOP</small><b class="dn">${fp(stop)}</b><small>${sg((stop/px-1)*100)}</small></div><div><small>EXIT: TARGET</small><b class="up">${fp(tp)}</b><small>${sg((tp/px-1)*100)}</small></div></div>
+ <p style="margin:10px 0 0"><b class="${r.sig?"up":""}">${r.sig?"SIGNAL: "+LBL[r.sig][1]+" setup is live.":met>=P.ms?"CLOSE: waiting for a trigger.":"WAIT: "+(P.ms-met)+" more condition(s) to line up."}</b><br><small>Once a trade gains one ATR the stop moves up to protect profit.${P.flip?" Also exits if the trend flips.":""}</small></p>`);
+ set("chk",c.map(x=>`<div class="ck ${x[1]?"up":"dn"}">${x[1]?"✔":"✘"} ${x[0]}</div>`).join(""));
+ const p=S.pos[s];$("buy").hidden=!!p;$("sellb").hidden=!p;$("buyb").textContent=`Buy ${nm(s)} now (paper)`;
+ if(p){const pc=(px/p.entry-1)*100;$("sellb").dataset.sell=s;$("sellb").textContent=`Sell ${nm(s)} now`;
+  set("own",`<div class="glass pad" style="margin-bottom:8px">You hold <b>${p.q.toFixed(4)} ${nm(s)}</b> · bought at ${fp(p.entry)}<br><b class="${pc>=0?"up":"dn"}" style="font-size:1.3rem">${pc>=0?"▲":"▼"} ${sg(pc)} (${m$((px-p.entry)*p.q)})</b><br><small>Stop ${fp(p.stop)} · Target ${fp(p.tp)}</small></div>`)}else set("own","");
+ draw()}
+function portUI(){const ks=Object.keys(S.pos),k=ks.join();
+ if($("pos")._k!==k){$("pos")._k=k;$("pos").innerHTML=k?ks.map(s=>`<div class="glass pad" style="margin-bottom:8px"><div id="pd-${s}"></div><button class="r" style="width:100%;margin-top:10px" data-sell="${s}">Sell ${nm(s)} now</button></div>`).join(""):'<div class="glass pad mu">None yet. Signals trade automatically, or use the Trade tab.</div>'}
+ for(const s of ks){const p=S.pos[s],px=PX[s]||p.entry,pc=(px/p.entry-1)*100;
+  set("pd-"+s,`<b style="font-size:1.1rem">${nm(s)}</b> <small>${p.m?"manual":p.k?LBL[p.k][1]:""}</small> <b class="${pc>=0?"up":"dn"}" style="float:right">${pc>=0?"▲":"▼"} ${sg(pc)} · ${m$((px-p.entry)*p.q)}</b><div class="grid3"><div><small>Entry</small>${fp(p.entry)}</div><div><small>Stop</small><span class="dn">${fp(p.stop)}</span></div><div><small>Target</small><span class="up">${fp(p.tp)}</span></div></div>`)}
+ const e=eq();set("stats",`<div class="grid3" style="margin:0"><div><small>Total P/L</small><b class="${e>=S.start?"up":"dn"}">${m$(e-S.start)}</b></div><div><small>Closed trades</small><b>${S.n}</b></div><div><small>Win rate</small><b>${S.n?Math.round(S.w/S.n*100)+"%":"-"}</b></div></div>`);
+ set("hist",S.hist.length?S.hist.slice(0,30).map(h=>`<div class="li"><b>${nm(h.s)}</b> <span class="${h.usd>=0?"up":"dn"}">${sg(h.pc)} (${m$(h.usd)})</span><br><small>${new Date(h.t).toLocaleString()} · ${h.why}</small></div>`).join(""):'<span class="mu">No closed trades yet.</span>');
+ set("log",S.log.map(l=>`<div class="li">${l}</div>`).join("")||'<span class="mu">Nothing yet.</span>')}
+function draw(){const d=DATA[sel],cv=$("ch");if(!d||!cv.clientWidth)return;const w=cv.clientWidth,h=cv.clientHeight,dp=devicePixelRatio||1;cv.width=w*dp;cv.height=h*dp;
+ const g=cv.getContext("2d");g.scale(dp,dp);const v=d.slice(-120),p=S.pos[sel],px=PX[sel],L=v.map(x=>Math.min(x.l,x.s)),H=v.map(x=>Math.max(x.h,x.s));
+ if(p){L.push(p.stop);H.push(p.tp)}if(px){L.push(px);H.push(px)}
+ const lo=Math.min(...L),hi=Math.max(...H),X=i=>8+i*(w-80)/(v.length-1),Y=q=>h-14-(q-lo)/(hi-lo)*(h-28);
+ const line=(k,col,lw)=>{g.beginPath();v.forEach((x,i)=>i?g.lineTo(X(i),Y(x[k])):g.moveTo(X(i),Y(x[k])));g.strokeStyle=col;g.lineWidth=lw;g.lineJoin="round";g.stroke()};
+ line("s","rgba(154,165,196,.8)",1.3);line("f","#ffd479",1.5);line("c","#e6ecff",1.8);
+ v.forEach((x,i)=>{if(x.buy){g.fillStyle="#34f5b0";g.beginPath();g.moveTo(X(i),Y(x.l)+3);g.lineTo(X(i)-6,Y(x.l)+13);g.lineTo(X(i)+6,Y(x.l)+13);g.fill()}});
+ g.font="11px ui-rounded,sans-serif";const hz=(q,col,t,dash)=>{g.setLineDash(dash?[5,4]:[]);g.strokeStyle=col;g.lineWidth=1.3;g.beginPath();g.moveTo(0,Y(q));g.lineTo(w-70,Y(q));g.stroke();g.setLineDash([]);g.fillStyle=col;g.fillText(t,w-68,Y(q)+4)};
+ if(p){hz(p.entry,"#9aa5c4","in "+fp(p.entry),1);hz(p.stop,"#ff6b8a","stop "+fp(p.stop),1);hz(p.tp,"#34f5b0","goal "+fp(p.tp),1)}
+ if(px)hz(px,"#ffffff",fp(px),0)}
+async function hist(s){let all=[],end;for(let i=0;i<3;i++){const k=await kl(s,1000,end);if(!k.length)break;all=k.concat(all);end=k[0].t-1}return ind(all)}
+function bt(d){let cash=1000,pos=null,pend=false,pa=0,tr=[],pk=1000,dd=0,cool=0;
+ for(let i=200;i<d.length;i++){const r=d[i];
+  if(!pos&&pend){const e=r.o*(1+cfg.slip),st=e-cfg.stopAtr*pa,tp=e+cfg.tpAtr*pa,q=Math.min(cash*cfg.risk/(e-st),cash*cfg.alloc/e);if(q>0){cash-=q*e*(1+cfg.fee);pos={q,e,st,tp,a:pa}}}
+  pend=false;
+  if(pos){let x=0;if(r.l<=pos.st)x=pos.st;else if(r.h>=pos.tp)x=pos.tp;else if(r.sell)x=r.c;
+   if(x){x*=1-cfg.slip;cash+=pos.q*x*(1-cfg.fee);tr.push(x/pos.e-1);if(x<pos.e)cool=i+6;pos=null}
+   else if(r.h-pos.e>=pos.a)pos.st=Math.max(pos.st,r.h-1.5*pos.a,pos.e*(1+2*cfg.fee))}
+  else if(r.buy&&i>=cool){pend=true;pa=r.atr}
+  const eq=cash+(pos?pos.q*r.c:0);pk=Math.max(pk,eq);dd=Math.min(dd,eq/pk-1)}
+ const last=d[d.length-1],eq=cash+(pos?pos.q*last.c:0),w=tr.filter(x=>x>0).length;
+ return{ret:(eq/1000-1)*100,hold:(last.c/d[200].c-1)*100,n:tr.length,win:tr.length?w/tr.length*100:0,dd:dd*100}}
+async function runBt(){
+ $("btr").innerHTML='<span class="mu">Running… about 20 seconds.</span>';
+ try{let out="";for(const s of SYMS.slice(0,5)){const b=bt(await hist(s));
+  out+=`<div><b>${s.replace("USDT","")}</b> <span class="${b.ret>=0?"up":"dn"}">${b.ret.toFixed(1)}%</span> vs buy &amp; hold ${b.hold.toFixed(1)}%<br><small>${b.n} trades · win rate ${b.win.toFixed(0)}% · worst dip ${b.dd.toFixed(1)}%</small></div>`}
+  $("btr").innerHTML=out+'<small class="mu">Past results do not predict future results. Judge it against buy &amp; hold.</small>'}
+ catch(e){$("btr").innerHTML='<span class="dn">Could not load history: '+e.message+'</span>'}}
+
+// ---------- wiring ----------
+SYMS.forEach(s=>{$("chips").insertAdjacentHTML("beforeend",`<button data-chip="${s}">${nm(s)}</button>`)});
+$("cards").innerHTML=SYMS.map(s=>`<div class="glass coin" data-pick="${s}" role="button" tabindex="0" aria-label="${nm(s)}"><div><b>${nm(s)}</b> <small class="tag" id="cb-${s}"></small><br><small id="ct-${s}">loading…</small><div class="heat" id="ht-${s}"><i></i><i></i><i></i><i></i><i></i><i></i></div></div><svg class="sp" viewBox="0 0 80 28" preserveAspectRatio="none"><polyline id="sp-${s}" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" points=""/></svg><div class="cr"><b id="cp-${s}">…</b></div></div>`).join("");
+document.addEventListener("click",e=>{const b=e.target.closest("[data-t],[data-pick],[data-chip],[data-sell],[data-f],[data-tf],[data-prof]");if(!b)return;
+ if(!ac)try{ac=new(window.AudioContext||window.webkitAudioContext)()}catch(x){}
+ const D=b.dataset;if(D.t)go(D.t);else if(D.pick){sel=D.pick;prefill();go("trade")}else if(D.chip){sel=D.chip;prefill();render()}
+ else if(D.sell){if(PX[D.sell]&&S.pos[D.sell])close(D.sell,PX[D.sell],"manual sell");sv("s",S);render()}else if(D.f)$("amt").value=(S.cash*D.f).toFixed(2);
+ else if(D.tf){cfg.tf=TF=D.tf;sv("c2",cfg);DATA={};RAW={};FEED=[];primed=false;$("feed")._k="";set("feed","");refreshK();toast("Candle size: "+D.tf)}
+ else if(D.prof){cfg.prof=D.prof;applyP();sv("c2",cfg);rebuild();buildFeed();profUI();toast(P.n+" style on")}});
+document.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.dataset&&e.target.dataset.pick)e.target.click()});
+function profUI(){document.querySelectorAll("#profs button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.prof===cfg.prof));$("profd").textContent=P.d+" Stop "+P.sa+"× ATR, target "+P.ta+"× ATR."}
+$("sug").onclick=()=>prefill();
+$("buyb").onclick=()=>{const s=sel,amt=+$("amt").value,sp=+$("slp").value,tp=+$("tpp").value,r=lastC(s);
+ if(S.halted)return toast("Trading is halted. Tap Reset account in More.");if(!PX[s]||!r)return toast("Waiting for prices");if(S.pos[s])return toast("You already hold "+nm(s));
+ if(!(amt>=10))return toast("Minimum $10");if(amt>S.cash+.01)return toast("Not enough cash. You have "+m$(S.cash));if(!(sp>0&&sp<50&&tp>0))return toast("Set the stop % and target %");
+ open(s,amt,sp,tp,r.atr,true,"");sv("s",S);prefill();render()};
+$("sellall").onclick=()=>{for(const s of Object.keys(S.pos))close(s,PX[s],"manual sell");sv("s",S);render()};
+$("kill").onclick=()=>{if(confirm("Sell everything and stop all trading?"))kill("manual kill switch");render()};
+$("auto").onchange=e=>{S.auto=e.target.checked;sv("s",S);toast(S.auto?"Auto-trade ON":"Auto-trade OFF: alerts only")};
+$("bt").onclick=runBt;
+$("save").onclick=()=>{cfg.tgT=$("tgT").value.trim();cfg.tgC=$("tgC").value.trim();cfg.risk=(+$("risk").value||1.5)/100;cfg.dayLoss=(+$("dl").value||4)/100;cfg.maxDD=(+$("md").value||12)/100;cfg.start=+$("st0").value||1000;cfg.lg=$("lg").checked;document.documentElement.classList.toggle("lg",cfg.lg);sv("c2",cfg);toast("Settings saved")};
+$("reset").onclick=()=>{if(confirm("Reset paper account to $"+cfg.start+"?")){S=fresh();sv("s",S);toast("Account reset");render()}};
+const BOT=()=>$("botsrc").textContent.replace(/^\n/,""),flash=(b,t)=>{const o=b.textContent;b.textContent=t;setTimeout(()=>b.textContent=o,1800)};
+$("cpy").onclick=async e=>{try{await navigator.clipboard.writeText(BOT());flash(e.target,"Copied")}catch(x){flash(e.target,"Use Download")}};
+$("dl").onclick=e=>{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([BOT()],{type:"text/plain"}));a.download="bot.py";a.click();flash(e.target,"Saved")};
+async function lock(){try{wl=await navigator.wakeLock.request("screen")}catch(e){}}
+document.addEventListener("visibilitychange",()=>{if(!document.hidden){lock();cnt=0}});
+$("tgT").value=cfg.tgT;$("tgC").value=cfg.tgC;$("risk").value=+(cfg.risk*100).toFixed(2);$("dl").value=cfg.dayLoss*100;$("md").value=cfg.maxDD*100;$("st0").value=cfg.start;$("lg").checked=cfg.lg;document.documentElement.classList.toggle("lg",cfg.lg);
+const raw0=ld("k"+TF,null);if(raw0){Object.assign(RAW,raw0);rebuild();for(const s of SYMS)if(DATA[s])PX[s]=DATA[s][DATA[s].length-1].c;S.seen=S.seen.concat(SYMS.map(s=>lastC(s)&&lastC(s).sig?s+TF+lastC(s).t:""))}
+profUI();buildFeed();prefill();lock();render();loop();
+</script></body></html>
